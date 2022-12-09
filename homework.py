@@ -2,12 +2,15 @@ import os
 import logging
 import sys
 
-from datetime import time
+import time
 from http import HTTPStatus
 
 import requests
 import telegram
 from dotenv import load_dotenv
+from telegram import TelegramError
+
+from exceptions import ServerNotAvailableException
 
 load_dotenv()
 
@@ -47,7 +50,7 @@ def send_message(bot, message):
     """Отправляет сообщение в Telegram чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-    except Exception:
+    except TelegramError:
         logging.error('Ошибка при отправке сообщения')
     else:
         logger.debug('Сообщение успешно отправленно в чат')
@@ -55,33 +58,34 @@ def send_message(bot, message):
 
 def get_api_answer(timestamp):
     """Запрос к API-сервиса."""
+    params = {'from_date': timestamp}
     try:
         response = requests.get(
-            url=ENDPOINT, headers=HEADERS, params=timestamp
+            url=ENDPOINT, headers=HEADERS, params=params
         )
-        if response.status_code != HTTPStatus.OK:
-            raise ConnectionError
     except requests.RequestException as error:
-        logging.error(f'Сбой API не доступен: {error}')
+        raise logging.error(f'Сбой API не доступен: {error}')
+    if response.status_code != HTTPStatus.OK:
+        raise ServerNotAvailableException(response.status_code)
     return response.json()
 
 
 def check_response(response):
     """Проверяет ответ API на соответствие документации."""
-    if isinstance(response, dict):
-        if 'homeworks' in response:
-            if isinstance(response.get('homeworks'), list):
-                return response.get('homeworks')
-            raise TypeError("API возвращает не список.")
+    if not isinstance(response, dict):
+        raise TypeError('API возвращает не словарь.')
+    if 'homeworks' not in response.keys():
         raise KeyError('Не найден ключ homeworks.')
-    raise TypeError('API возвращает не словарь.')
+    if not isinstance(response.get('homeworks'), list):
+        raise TypeError("API возвращает не список.")
+    return response.get('homeworks')
 
 
 def parse_status(homework):
     """Получает статутс домашнего задания."""
     homework_name = homework.get('homework_name')
-    if homework_name is None:
-        raise TypeError
+    if 'homework_name' not in homework:
+        raise KeyError(f'Отсутсвует ключ {homework_name}')
     verdict = HOMEWORK_VERDICTS.get(homework.get('status'))
     if homework.get('status') not in HOMEWORK_VERDICTS:
         raise ValueError(f'Неизвестный статус работы: {verdict}')
@@ -91,20 +95,20 @@ def parse_status(homework):
 def main():
     """Основная логика работы бота."""
     if not check_tokens():
-        bot = telegram.Bot(token=TELEGRAM_TOKEN)
-        timestamp = int(time.time())
-
-        while True:
-            try:
-                response = get_api_answer(timestamp)
-                homeworks = check_response(response)
-                if homeworks:
-                    send_message(bot, parse_status(homeworks[0]))
-            except Exception as error:
-                message = f'Сбой в работе программы: {error}'
-                send_message(bot, message)
-            finally:
-                time.sleep(RETRY_PERIOD)
+        sys.exit('Отсутвуют переменные окружения')
+    bot = telegram.Bot(token=TELEGRAM_TOKEN)
+    timestamp = 0
+    while True:
+        try:
+            response = get_api_answer(timestamp)
+            homeworks = check_response(response)
+            if homeworks:
+                send_message(bot, parse_status(homeworks[0]))
+        except Exception as error:
+            message = f'Сбой в работе программы: {error}'
+            send_message(bot, message)
+        finally:
+            time.sleep(RETRY_PERIOD)
 
 
 if __name__ == '__main__':
