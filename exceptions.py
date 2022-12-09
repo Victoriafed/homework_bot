@@ -1,6 +1,6 @@
 class ServerNotAvailableException(Exception):
-    def __init__(self, status):
-        self.status = status
+    pass
 
-    def __str__(self):
-        return f'Не удалось выполнить запрос - {self.status}'
+
+class APINotAvailableException(Exception):
+    pass

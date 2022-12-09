@@ -1,16 +1,14 @@
 import os
 import logging
 import sys
-
 import time
-from http import HTTPStatus
-
 import requests
 import telegram
+
+from http import HTTPStatus
 from dotenv import load_dotenv
 from telegram import TelegramError
-
-from exceptions import ServerNotAvailableException
+from exceptions import ServerNotAvailableException, APINotAvailableException
 
 load_dotenv()
 
@@ -28,14 +26,15 @@ HOMEWORK_VERDICTS = {
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
 }
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setStream(sys.stdout)
 formatter = logging.Formatter(
     '%(asctime)s %(levelname)s: %(message)s'
 )
+handler = logging.StreamHandler()
+handler.setStream(sys.stdout)
 handler.setFormatter(formatter)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logger.addHandler(handler)
 
 
 def check_tokens():
@@ -64,9 +63,11 @@ def get_api_answer(timestamp):
             url=ENDPOINT, headers=HEADERS, params=params
         )
     except requests.RequestException as error:
-        raise logging.error(f'Сбой API не доступен: {error}')
+        raise APINotAvailableException(f'Сбой API не доступен: {error}')
     if response.status_code != HTTPStatus.OK:
-        raise ServerNotAvailableException(response.status_code)
+        raise ServerNotAvailableException(
+            f"Не удалось выполнить запрос - {response.status_code}"
+        )
     return response.json()
 
 
@@ -86,9 +87,12 @@ def parse_status(homework):
     homework_name = homework.get('homework_name')
     if 'homework_name' not in homework:
         raise KeyError(f'Отсутсвует ключ {homework_name}')
+    status = homework.get('status')
+    if status not in HOMEWORK_VERDICTS:
+        raise ValueError(f'Неизвестный статус работы:{homework.get("status")}')
     verdict = HOMEWORK_VERDICTS.get(homework.get('status'))
-    if homework.get('status') not in HOMEWORK_VERDICTS:
-        raise ValueError(f'Неизвестный статус работы: {verdict}')
+    if verdict is None:
+        logging.error(f'Неизвестный статус работы')
     return f'Изменился статус проверки работы "{homework_name}": {verdict}'
 
 
@@ -97,7 +101,7 @@ def main():
     if not check_tokens():
         sys.exit('Отсутвуют переменные окружения')
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    timestamp = 0
+    timestamp = int(time.time())
     while True:
         try:
             response = get_api_answer(timestamp)
