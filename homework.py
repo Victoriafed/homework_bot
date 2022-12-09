@@ -36,7 +36,7 @@ handler.setFormatter(formatter)
 
 
 def check_tokens():
-    """Проверка доступности переменных окружения"""
+    """Проверка доступности переменных окружения."""
     if not PRACTICUM_TOKEN or not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         logger.critical('Отсутствует обязательная переменная окружения')
         return False
@@ -44,7 +44,7 @@ def check_tokens():
 
 
 def send_message(bot, message):
-    """Отправляет сообщение в Telegram чат"""
+    """Отправляет сообщение в Telegram чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
     except Exception:
@@ -54,7 +54,7 @@ def send_message(bot, message):
 
 
 def get_api_answer(timestamp):
-    """Запрос к API-сервиса"""
+    """Запрос к API-сервиса."""
     try:
         response = requests.get(
             url=ENDPOINT, headers=HEADERS, params=timestamp
@@ -67,7 +67,7 @@ def get_api_answer(timestamp):
 
 
 def check_response(response):
-    """Проверяет ответ API на соответствие документации"""
+    """Проверяет ответ API на соответствие документации."""
     if isinstance(response, dict):
         if 'homeworks' in response:
             if isinstance(response.get('homeworks'), list):
@@ -78,7 +78,7 @@ def check_response(response):
 
 
 def parse_status(homework):
-    """Получает статутс домашнего задания"""
+    """Получает статутс домашнего задания."""
     homework_name = homework.get('homework_name')
     if homework_name is None:
         raise TypeError
@@ -90,7 +90,6 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-
     if not check_tokens():
         bot = telegram.Bot(token=TELEGRAM_TOKEN)
         timestamp = int(time.time())
