@@ -14,3 +14,7 @@ pip install -r requirements.txt
 ```
 Выносим токены в .env и запускаем.
 
+### Автор
+[Федорова Виктория](https://github.com/Victoriafed)
+
+
