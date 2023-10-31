@@ -1,6 +1,9 @@
 # homework_bot
+[![Python](https://img.shields.io/badge/-Python-464646?style=flat&logo=Python&logoColor=56C0C0&color=008080)](https://www.python.org/)
+![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)
 
-## Telegram-бот для отслеживания статуса домашней работы 
+## Описание
+Telegram-бот для отслеживания статуса домашней работы 
 Бот:
 - каждые 10 минут опрашивает API сервиса Практикум.Домашка и проверяет статус отправленной на ревью домашней работы
 - отправляет сообщение об изменение уведомлений
